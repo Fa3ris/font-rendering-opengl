@@ -1,35 +1,89 @@
 package fr;
 
+import static org.lwjgl.glfw.GLFW.GLFW_FALSE;
+import static org.lwjgl.glfw.GLFW.GLFW_KEY_ESCAPE;
+import static org.lwjgl.glfw.GLFW.GLFW_RELEASE;
+import static org.lwjgl.glfw.GLFW.GLFW_RESIZABLE;
+import static org.lwjgl.glfw.GLFW.GLFW_TRUE;
+import static org.lwjgl.glfw.GLFW.GLFW_VISIBLE;
+import static org.lwjgl.glfw.GLFW.glfwCreateWindow;
+import static org.lwjgl.glfw.GLFW.glfwDefaultWindowHints;
+import static org.lwjgl.glfw.GLFW.glfwGetPrimaryMonitor;
+import static org.lwjgl.glfw.GLFW.glfwGetVideoMode;
+import static org.lwjgl.glfw.GLFW.glfwGetWindowSize;
+import static org.lwjgl.glfw.GLFW.glfwInit;
+import static org.lwjgl.glfw.GLFW.glfwMakeContextCurrent;
+import static org.lwjgl.glfw.GLFW.glfwPollEvents;
+import static org.lwjgl.glfw.GLFW.glfwSetKeyCallback;
+import static org.lwjgl.glfw.GLFW.glfwSetWindowPos;
+import static org.lwjgl.glfw.GLFW.glfwSetWindowShouldClose;
+import static org.lwjgl.glfw.GLFW.glfwShowWindow;
+import static org.lwjgl.glfw.GLFW.glfwSwapBuffers;
+import static org.lwjgl.glfw.GLFW.glfwSwapInterval;
+import static org.lwjgl.glfw.GLFW.glfwWindowHint;
+import static org.lwjgl.glfw.GLFW.glfwWindowShouldClose;
+import static org.lwjgl.opengl.GL11.GL_ALPHA;
+import static org.lwjgl.opengl.GL11.GL_BLEND;
+import static org.lwjgl.opengl.GL11.GL_COLOR_BUFFER_BIT;
+import static org.lwjgl.opengl.GL11.GL_DEPTH_BUFFER_BIT;
+import static org.lwjgl.opengl.GL11.GL_LINEAR;
+import static org.lwjgl.opengl.GL11.GL_ONE_MINUS_SRC_ALPHA;
+import static org.lwjgl.opengl.GL11.GL_PROJECTION;
+import static org.lwjgl.opengl.GL11.GL_QUADS;
+import static org.lwjgl.opengl.GL11.GL_SRC_ALPHA;
+import static org.lwjgl.opengl.GL11.GL_TEXTURE_2D;
+import static org.lwjgl.opengl.GL11.GL_TEXTURE_MIN_FILTER;
+import static org.lwjgl.opengl.GL11.GL_UNSIGNED_BYTE;
+import static org.lwjgl.opengl.GL11.glBegin;
+import static org.lwjgl.opengl.GL11.glBindTexture;
+import static org.lwjgl.opengl.GL11.glBlendFunc;
+import static org.lwjgl.opengl.GL11.glClear;
+import static org.lwjgl.opengl.GL11.glClearColor;
+import static org.lwjgl.opengl.GL11.glColor3f;
+import static org.lwjgl.opengl.GL11.glEnable;
+import static org.lwjgl.opengl.GL11.glEnd;
+import static org.lwjgl.opengl.GL11.glGenTextures;
+import static org.lwjgl.opengl.GL11.glLoadIdentity;
+import static org.lwjgl.opengl.GL11.glMatrixMode;
+import static org.lwjgl.opengl.GL11.glOrtho;
+import static org.lwjgl.opengl.GL11.glTexCoord2f;
+import static org.lwjgl.opengl.GL11.glTexImage2D;
+import static org.lwjgl.opengl.GL11.glTexParameteri;
+import static org.lwjgl.opengl.GL11.glVertex2f;
+import static org.lwjgl.stb.STBTruetype.stbtt_BakeFontBitmap;
+import static org.lwjgl.stb.STBTruetype.stbtt_GetBakedQuad;
+import static org.lwjgl.stb.STBTruetype.stbtt_GetFontVMetrics;
+import static org.lwjgl.stb.STBTruetype.stbtt_InitFont;
+import static org.lwjgl.system.MemoryStack.stackPush;
+import static org.lwjgl.system.MemoryUtil.NULL;
+
 import java.io.IOException;
 import java.net.URISyntaxException;
 import java.net.URL;
+import java.nio.ByteBuffer;
+import java.nio.FloatBuffer;
+import java.nio.IntBuffer;
 import java.nio.channels.FileChannel;
 import java.nio.file.Paths;
-import org.lwjgl.*;
-import org.lwjgl.glfw.*;
-import org.lwjgl.opengl.*;
+import org.lwjgl.BufferUtils;
+import org.lwjgl.glfw.GLFWErrorCallback;
+import org.lwjgl.glfw.GLFWVidMode;
+import org.lwjgl.opengl.GL;
 import org.lwjgl.stb.STBTTAlignedQuad;
 import org.lwjgl.stb.STBTTBakedChar;
 import org.lwjgl.stb.STBTTFontinfo;
-import org.lwjgl.stb.STBTruetype;
-import org.lwjgl.system.*;
-
-import java.nio.*;
-
-import static org.lwjgl.glfw.Callbacks.*;
-import static org.lwjgl.glfw.GLFW.*;
-import static org.lwjgl.opengl.GL11.*;
-import static org.lwjgl.stb.STBTruetype.*;
-import static org.lwjgl.system.MemoryStack.*;
-import static org.lwjgl.system.MemoryUtil.*;
+import org.lwjgl.system.MemoryStack;
 
 public class Main {
 
   // The window handle
   private long window;
 
+  float windowW = 1024;
+  float windowH = 768;
+
   public static void main(String[] args) {
-     new Main().run();
+    new Main().run();
   }
 
   private void run() {
@@ -39,31 +93,31 @@ public class Main {
     GLFWErrorCallback.createPrint(System.err).set();
 
     // Initialize GLFW. Most GLFW functions will not work before doing this.
-    if ( !glfwInit() )
+    if (!glfwInit()) {
       throw new IllegalStateException("Unable to initialize GLFW");
+    }
 
     // Configure GLFW
     glfwDefaultWindowHints(); // optional, the current window hints are already the default
     glfwWindowHint(GLFW_VISIBLE, GLFW_FALSE); // the window will stay hidden after creation
     glfwWindowHint(GLFW_RESIZABLE, GLFW_TRUE); // the window will be resizable
 
-    float windowW = 800;
-    float windowH = 800;
     // Create the window
-    window = glfwCreateWindow((int) windowW, (int)windowH, "Hello World!", NULL, NULL);
+    window = glfwCreateWindow((int) windowW, (int) windowH, "Hello World!", NULL, NULL);
 
-
-    if ( window == NULL )
+    if (window == NULL) {
       throw new RuntimeException("Failed to create the GLFW window");
+    }
 
     // Setup a key callback. It will be called every time a key is pressed, repeated or released.
     glfwSetKeyCallback(window, (window, key, scancode, action, mods) -> {
-      if ( key == GLFW_KEY_ESCAPE && action == GLFW_RELEASE )
+      if (key == GLFW_KEY_ESCAPE && action == GLFW_RELEASE) {
         glfwSetWindowShouldClose(window, true); // We will detect this in the rendering loop
+      }
     });
 
     // Get the thread stack and push a new frame
-    try ( MemoryStack stack = stackPush() ) {
+    try (MemoryStack stack = stackPush()) {
       IntBuffer pWidth = stack.mallocInt(1); // int*
       IntBuffer pHeight = stack.mallocInt(1); // int*
 
@@ -136,24 +190,22 @@ public class Main {
 
     System.out.printf("ascent = %s descent = %s line_gap = %s%n", fontAscent, fontDescent, fontLineGap);
 
-
     int texId = glGenTextures();
 
-    STBTTBakedChar.Buffer charData = STBTTBakedChar.malloc(96); // why 96 ?
+    STBTTBakedChar.Buffer charData = STBTTBakedChar.malloc(96); // why 96? - 96 chars to fit
 
-    int fontHeight = 16;
-    float contentScale = 1f;
-    int bitMapW = 512;
-    int bitMapH = 512;
+    int fontHeight = 32;
+    int bitMapW = 1024;
+    int bitMapH = 1024;
     ByteBuffer bitMap = BufferUtils.createByteBuffer(bitMapW * bitMapW);
-    stbtt_BakeFontBitmap(fontBuffer, fontHeight * contentScale, bitMap, bitMapW, bitMapH,
-        32, // first printable character = SPACE
+    stbtt_BakeFontBitmap(fontBuffer, fontHeight, bitMap, bitMapW, bitMapH,
+        32, // 32 = first printable character = SPACE
         charData);
 
     glBindTexture(GL_TEXTURE_2D, texId);
 
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_ALPHA, bitMapW, bitMapH, 0, GL_ALPHA, GL_UNSIGNED_BYTE, bitMap);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_ALPHA, bitMapW, bitMapH, 0, GL_ALPHA, GL_UNSIGNED_BYTE,
+        bitMap);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
 
     glClearColor(43f / 255f, 43f / 255f, 43f / 255f, 0f); // BG color
@@ -161,89 +213,82 @@ public class Main {
 
     glEnable(GL_TEXTURE_2D);
 
+    // need to blend to take alpha into account and not draw plain quads
+    // do not know how to explain
     glEnable(GL_BLEND);
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
-//    glMatrixMode(GL_PROJECTION);
-//    glLoadIdentity();
-//    glOrtho(0.0, 300, 300, 0.0, -1.0, 1.0);
-//    glMatrixMode(GL_MODELVIEW);
-
+    // set ortho projection
+    glMatrixMode(GL_PROJECTION);
+    glLoadIdentity();
+    glOrtho(0, (int) windowW, (int) windowH, 0, -1, 1);
 
     System.out.println("jusque là tout va bien");
 
-    boolean show = true;
     // loop
     // Run the rendering loop until the user has attempted to close
     // the window or has pressed the ESCAPE key.
-    while ( !glfwWindowShouldClose(window) ) {
+    while (!glfwWindowShouldClose(window)) {
       glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT); // clear the framebuffer
-
-
-      float scale = stbtt_ScaleForPixelHeight(info, fontHeight);
-
 
       try (MemoryStack stack = MemoryStack.stackPush()) {
 
         FloatBuffer x = stack.floats(0f);
         FloatBuffer y = stack.floats(0f);
 
-//        y.put(0, y.get(0) + (fontAscent - fontDescent + fontLineGap) * scale);
+        x.put(000).flip();
+        y.put(150).flip();
+
+        // gives the position of the vertices where to draw the glyph and advances the cursor
+        // also gives the texture coordinates of the glyph to sample from the font bitmap
         STBTTAlignedQuad q = STBTTAlignedQuad.create();
 
-        glBegin(GL_QUADS);
-
-        char f = 'a';
-
-        int index = f - 32;
-        stbtt_GetBakedQuad(charData, bitMapW, bitMapH, f - 32, x, y, q, true);
-
-//        glfwGetMonitorContentScale(monitor, px, py)
-
-        float x0, x1, y0, y1;
-        float factor = 0.1f;
-        x0 = -0.5f  * factor; x1 = 0.5f * factor;
-        y0 = 0.5f * factor; y1 = -0.5f * factor; // stb uses opposite y axis direction
-
-        glTexCoord2f(q.s0(), q.t0());
-        glVertex2f(x0, y0);
-
-        glTexCoord2f(q.s1(), q.t0());
-        glVertex2f(x1, y0);
-
-        glTexCoord2f(q.s1(), q.t1());
-        glVertex2f(x1, y1);
-
-        glTexCoord2f(q.s0(), q.t1());
-        glVertex2f(x0, y1);
-
-        if (show) {
-          show = false;
-          System.out.println("x0 = " + q.x0());
-          System.out.println("x1 = " + q.x1());
-          System.out.println("y0 = " + q.y0());
-          System.out.println("y1 = " + q.y1());
-
-
+        String msg = "Hello my first string but how laborious it is fighter!!!";
+        if (true) { // all glyphs loaded
+          StringBuilder sb = new StringBuilder();
+          for (char c = 32; c < 128; ++c) {
+            sb.append(c);
+          }
+          msg = sb.toString();
         }
-        if (false) {
-          glTexCoord2f(q.s0(), q.t0());
-          glVertex2f(q.x0() / windowW, q.y0() / windowH);
 
-          glTexCoord2f(q.s1(), q.t0());
-          glVertex2f(q.x1() / windowW, q.y0() / windowH);
+        msg = msg.repeat(5);
 
-          glTexCoord2f(q.s1(), q.t1());
-          glVertex2f(q.x1() / windowW, q.y1() / windowH);
+        char[] chars = new char[msg.length()];
+        msg.getChars(0, msg.length(), chars, 0);
+        for (char aChar : chars) {
+          stbtt_GetBakedQuad(charData, bitMapW, bitMapH,
+              aChar - 32, // reminder that the offset is 32
+              x, y, q, true);
 
-          glTexCoord2f(q.s0(), q.t1());
-          glVertex2f(q.x0() / windowW, q.y1() / windowH);
+          // print quad
+          glBegin(GL_QUADS);
+            glTexCoord2f(q.s0(), q.t0());
+            glVertex2f(q.x0(), q.y0());
+
+            glTexCoord2f(q.s1(), q.t0());
+            glVertex2f(q.x1(), q.y0());
+
+            glTexCoord2f(q.s1(), q.t1());
+            glVertex2f(q.x1(), q.y1());
+
+            glTexCoord2f(q.s0(), q.t1());
+            glVertex2f(q.x0(), q.y1());
+          glEnd();
         }
-        glEnd();
       }
 
-
-
+      // show font bitmap
+      glBegin(GL_QUADS);
+        glTexCoord2f(0, 0);
+        glVertex2f(256, 200 + 0);
+        glTexCoord2f(1, 0);
+        glVertex2f(768, 200 + 0);
+        glTexCoord2f(1, 1);
+        glVertex2f(768, 200 + 512);
+        glTexCoord2f(0, 1);
+        glVertex2f(256, 200 + 512);
+      glEnd();
 
       glfwSwapBuffers(window); // swap the color buffers
 
@@ -251,9 +296,5 @@ public class Main {
       // invoked during this call.
       glfwPollEvents();
     }
-  }
-
-  private static float scale(float center, float offset, float factor) {
-    return (offset - center) * factor + center;
   }
 }
