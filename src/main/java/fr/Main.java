@@ -9,6 +9,7 @@ import static org.lwjgl.glfw.GLFW.GLFW_VISIBLE;
 import static org.lwjgl.glfw.GLFW.glfwCreateWindow;
 import static org.lwjgl.glfw.GLFW.glfwDefaultWindowHints;
 import static org.lwjgl.glfw.GLFW.glfwGetPrimaryMonitor;
+import static org.lwjgl.glfw.GLFW.glfwGetTime;
 import static org.lwjgl.glfw.GLFW.glfwGetVideoMode;
 import static org.lwjgl.glfw.GLFW.glfwGetWindowSize;
 import static org.lwjgl.glfw.GLFW.glfwInit;
@@ -81,6 +82,11 @@ public class Main {
 
   float windowW = 1024;
   float windowH = 768;
+
+  double lastTime;
+  double dt;
+
+  double accTime;
 
   public static void main(String[] args) {
     new Main().run();
@@ -229,6 +235,23 @@ public class Main {
     // Run the rendering loop until the user has attempted to close
     // the window or has pressed the ESCAPE key.
     while (!glfwWindowShouldClose(window)) {
+
+      double now = glfwGetTime();
+      dt = now - lastTime;
+      System.out.printf("dt = %s\n",dt);
+
+      accTime += dt;
+
+      double animationTotal = 10; // in sec;
+      if (accTime > 3) {
+//        double t = accTime / animationTotal; // how much we were
+//        animationTotal = 8;
+//        accTime = t * animationTotal;
+      }
+
+
+      System.out.printf("animation %s\n", accTime / animationTotal);
+      lastTime = now;
       glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT); // clear the framebuffer
 
       try (MemoryStack stack = MemoryStack.stackPush()) {
@@ -311,11 +334,93 @@ public class Main {
         glVertex2f(256, 200 + 512);
       glEnd();
 
+      String msg = "hello".repeat(10);
+
+      double t =  accTime / animationTotal;
+
+      int prefix = (int) Math.min(msg.length(), Math.round(t * (msg.length())));
+
+      System.out.println("prefix " + prefix);
+      String sub = msg.substring(0, prefix);
+      drawString(sub, 200, 500, charData, bitMapW, bitMapH, fontHeight, fontLineGap);
+
       glfwSwapBuffers(window); // swap the color buffers
 
       // Poll for window events. The key callback above will only be
       // invoked during this call.
       glfwPollEvents();
+    }
+  }
+
+  private void drawString(String s, float startX, float startY, STBTTBakedChar.Buffer charData, int bitMapW, int bitMapH, int fontHeight, int fontLineGap) {
+    try (MemoryStack stack = MemoryStack.stackPush()) {
+
+      FloatBuffer x = stack.floats(0f);
+      FloatBuffer y = stack.floats(0f);
+
+      x.put(startX).flip();
+      y.put(startY).flip();
+
+      // gives the position of the vertices where to draw the glyph and advances the cursor
+      // also gives the texture coordinates of the glyph to sample from the font bitmap
+      STBTTAlignedQuad q = STBTTAlignedQuad.create();
+
+      String msg = "Hello my first string but how laborious it is fighter!!!";
+      if (true) { // all glyphs loaded
+        StringBuilder sb = new StringBuilder();
+        for (char c = 32; c < 127; ++c) { // 127 = DEL
+          sb.append(c);
+        }
+        sb.append("FIN");
+        msg = sb.toString();
+      }
+
+      msg = msg.repeat(5);
+
+      msg = s;
+
+      char[] chars = new char[msg.length()];
+      msg.getChars(0, msg.length(), chars, 0);
+
+      for (char aChar : chars) {
+        stbtt_GetBakedQuad(charData, bitMapW, bitMapH,
+            aChar - 32, // reminder that the offset is 32
+            x, y, q, true);
+
+        // if quad overflows to the right of the screen
+        // go to next line and recalculate the quad
+        if (q.x1() > windowW) {
+          x.mark();
+          float currentX = x.get();
+          x.reset();
+          if (currentX > windowW) {
+            x.put(0, 0);
+            y.mark();
+            float currentY = y.get();
+            y.reset();
+            currentY += fontHeight + fontLineGap;
+            y.put(0, currentY);
+          }
+          stbtt_GetBakedQuad(charData, bitMapW, bitMapH,
+              aChar - 32, // reminder that the offset is 32
+              x, y, q, true);
+        }
+
+        // print quad
+        glBegin(GL_QUADS);
+        glTexCoord2f(q.s0(), q.t0());
+        glVertex2f(q.x0(), q.y0());
+
+        glTexCoord2f(q.s1(), q.t0());
+        glVertex2f(q.x1(), q.y0());
+
+        glTexCoord2f(q.s1(), q.t1());
+        glVertex2f(q.x1(), q.y1());
+
+        glTexCoord2f(q.s0(), q.t1());
+        glVertex2f(q.x0(), q.y1());
+        glEnd();
+      }
     }
   }
 }
