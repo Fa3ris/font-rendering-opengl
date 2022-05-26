@@ -246,9 +246,10 @@ public class Main {
         String msg = "Hello my first string but how laborious it is fighter!!!";
         if (true) { // all glyphs loaded
           StringBuilder sb = new StringBuilder();
-          for (char c = 32; c < 128; ++c) {
+          for (char c = 32; c < 127; ++c) { // 127 = DEL
             sb.append(c);
           }
+          sb.append("FIN");
           msg = sb.toString();
         }
 
@@ -256,10 +257,30 @@ public class Main {
 
         char[] chars = new char[msg.length()];
         msg.getChars(0, msg.length(), chars, 0);
+
         for (char aChar : chars) {
           stbtt_GetBakedQuad(charData, bitMapW, bitMapH,
               aChar - 32, // reminder that the offset is 32
               x, y, q, true);
+
+          // if quad overflows to the right of the screen
+          // go to next line and recalculate the quad
+          if (q.x1() > windowW) {
+            x.mark();
+            float currentX = x.get();
+            x.reset();
+            if (currentX > windowW) {
+              x.put(0, 0);
+              y.mark();
+              float currentY = y.get();
+              y.reset();
+              currentY += fontHeight + fontLineGap;
+              y.put(0, currentY);
+            }
+            stbtt_GetBakedQuad(charData, bitMapW, bitMapH,
+                aChar - 32, // reminder that the offset is 32
+                x, y, q, true);
+          }
 
           // print quad
           glBegin(GL_QUADS);
