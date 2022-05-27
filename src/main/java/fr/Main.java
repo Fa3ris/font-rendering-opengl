@@ -88,6 +88,9 @@ public class Main {
 
   double accTime;
 
+  double start;
+  double end;
+
   public static void main(String[] args) {
     new Main().run();
   }
@@ -231,6 +234,11 @@ public class Main {
 
     System.out.println("jusque là tout va bien");
 
+    String msg2 = "hello".repeat(10);
+
+    start = 0;
+    end = msg2.length();
+
     // loop
     // Run the rendering loop until the user has attempted to close
     // the window or has pressed the ESCAPE key.
@@ -242,16 +250,8 @@ public class Main {
 
       accTime += dt;
 
-      double animationTotal = 10; // in sec;
-      if (accTime > 3) {
-//        double t = accTime / animationTotal; // how much we were
-//        animationTotal = 8;
-//        accTime = t * animationTotal;
-      }
-
-
       System.out.printf("animation %s\n", accTime / animationTotal);
-      lastTime = now;
+
       glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT); // clear the framebuffer
 
       try (MemoryStack stack = MemoryStack.stackPush()) {
@@ -323,34 +323,79 @@ public class Main {
       }
 
       // show font bitmap
+      int fontY = 350;
       glBegin(GL_QUADS);
         glTexCoord2f(0, 0);
-        glVertex2f(256, 200 + 0);
+        glVertex2f(256, fontY + 0);
         glTexCoord2f(1, 0);
-        glVertex2f(768, 200 + 0);
+        glVertex2f(768, fontY + 0);
         glTexCoord2f(1, 1);
-        glVertex2f(768, 200 + 512);
+        glVertex2f(768, fontY + 512);
         glTexCoord2f(0, 1);
-        glVertex2f(256, 200 + 512);
+        glVertex2f(256, fontY + 512);
       glEnd();
 
-      String msg = "hello".repeat(10);
+      if (accTime > 2 && !accelerate) {
+        accelerate = true;
+        start = prefix; // animate on the remaining substring
+        accTime = 0;
+        animationTotal = 2;
+      }
 
-      double t =  accTime / animationTotal;
+      double t =  Math.min(1, accTime / animationTotal);
 
-      int prefix = (int) Math.min(msg.length(), Math.round(t * (msg.length())));
+
+      double value = start + t * (end - start);
+
+      prefix = (int) Math.min(msg2.length(), Math.round(t * (msg2.length())));
+      prefix = (int) Math.min(msg2.length(), value);
+
+      if (prefix == msg2.length()) {
+        waitBeforeReset -= dt;
+        if (waitBeforeReset <= 0) {
+          waitBeforeReset = 1;
+          accTime = 0;
+          animationTotal = 10;
+          accelerate = false;
+          start = 0;
+        }
+      }
 
       System.out.println("prefix " + prefix);
-      String sub = msg.substring(0, prefix);
+      String sub = msg2.substring(0, prefix);
       drawString(sub, 200, 500, charData, bitMapW, bitMapH, fontHeight, fontLineGap);
+
+      int x = 100;
+      int y = 600;
+      String[] debugMessages = {
+          "dt : " + dt,
+          "prefix : " + prefix,
+          String.format("t: %.2f", t),
+          "animation total : " + animationTotal,
+          "start : " + start,
+          "wait before reset : " + waitBeforeReset
+      };
+      for (String message : debugMessages) {
+        drawString(message , x, y, charData, bitMapW, bitMapH, fontHeight, fontLineGap);
+        y += fontHeight + fontLineGap;
+      }
 
       glfwSwapBuffers(window); // swap the color buffers
 
       // Poll for window events. The key callback above will only be
       // invoked during this call.
       glfwPollEvents();
+
+      lastTime = now;
     }
   }
+
+  double waitBeforeReset = 1;
+
+  int prefix;
+  boolean accelerate;
+
+  double animationTotal = 10;
 
   private void drawString(String s, float startX, float startY, STBTTBakedChar.Buffer charData, int bitMapW, int bitMapH, int fontHeight, int fontLineGap) {
     try (MemoryStack stack = MemoryStack.stackPush()) {
