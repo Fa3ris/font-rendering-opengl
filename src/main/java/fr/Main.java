@@ -27,6 +27,7 @@ import static org.lwjgl.opengl.GL11.GL_ALPHA;
 import static org.lwjgl.opengl.GL11.GL_BLEND;
 import static org.lwjgl.opengl.GL11.GL_COLOR_BUFFER_BIT;
 import static org.lwjgl.opengl.GL11.GL_DEPTH_BUFFER_BIT;
+import static org.lwjgl.opengl.GL11.GL_DEPTH_TEST;
 import static org.lwjgl.opengl.GL11.GL_FALSE;
 import static org.lwjgl.opengl.GL11.GL_FLOAT;
 import static org.lwjgl.opengl.GL11.GL_LINEAR;
@@ -87,6 +88,7 @@ import static org.lwjgl.stb.STBTruetype.stbtt_BakeFontBitmap;
 import static org.lwjgl.stb.STBTruetype.stbtt_GetBakedQuad;
 import static org.lwjgl.stb.STBTruetype.stbtt_GetFontVMetrics;
 import static org.lwjgl.stb.STBTruetype.stbtt_InitFont;
+import static org.lwjgl.system.MemoryStack.create;
 import static org.lwjgl.system.MemoryStack.stackPush;
 import static org.lwjgl.system.MemoryUtil.NULL;
 
@@ -274,10 +276,64 @@ public class Main {
 
     //glOrtho(0, (int) windowW, (int) windowH, 0, -1, 1);
     Matrix4f ortho = new Matrix4f().ortho(0, windowW, windowH, 0, -1, 1);
-    int vertexShader;
+//    int vertexShader;
+//
+//    vertexShader = glCreateShader(GL_VERTEX_SHADER);
+//    String vertexSrc = "#version 330 core\n" +
+//        "layout (location = 0) in vec3 aPos;\n" +
+//        "uniform mat4 projection;\n" +
+//        "void main()\n" +
+//        "{\n" +
+//        "   gl_Position = projection * vec4(aPos.x, aPos.y, aPos.z, 1.0);\n" +
+//        "}";
+//
+//    glShaderSource(vertexShader, vertexSrc);
+//    glCompileShader(vertexShader);
+//
+//    int status = glGetShaderi(vertexShader, GL_COMPILE_STATUS);
+//    if (status == GLFW_FALSE) {
+//      String compileError = glGetShaderInfoLog(vertexShader);
+//      System.err.println(compileError);
+//      throw new IllegalStateException("");
+//    }
+//
+//
+//    int fragShader;
+//
+//    fragShader = glCreateShader(GL_FRAGMENT_SHADER);
+//    String fragSrc = "#version 330 core\n"
+//        + "out vec4 FragColor;\n"
+//        + "\n"
+//        + "void main()\n"
+//        + "{\n"
+//        + "    FragColor = vec4(1.0f, 0.5f, 0.2f, 1.0f);\n"
+//        + "}";
+//    glShaderSource(fragShader, fragSrc);
+//    glCompileShader(fragShader);
+//
+//    status = glGetShaderi(fragShader, GL_COMPILE_STATUS);
+//    if (status == GLFW_FALSE) {
+//      String compileError = glGetShaderInfoLog(fragShader);
+//      System.err.println(compileError);
+//      throw new IllegalStateException("");
+//    }
+//
+//    int program;
+//    program = glCreateProgram();
+//    glAttachShader(program, vertexShader);
+//    glAttachShader(program, fragShader);
+//    glLinkProgram(program);
+    //    status = glGetProgrami(program, GL_LINK_STATUS);
+//    if (status == GLFW_FALSE) {
+//      String linkError = glGetProgramInfoLog(program);
+//      System.err.println(linkError);
+//      throw new IllegalStateException("");
+//    }
+//
+//    glDeleteShader(vertexShader);
+//    glDeleteShader(fragShader);
 
-    vertexShader = glCreateShader(GL_VERTEX_SHADER);
-    String vertexSrc = "#version 330 core\n" +
+        String vertexSrc = "#version 330 core\n" +
         "layout (location = 0) in vec3 aPos;\n" +
         "uniform mat4 projection;\n" +
         "void main()\n" +
@@ -285,20 +341,6 @@ public class Main {
         "   gl_Position = projection * vec4(aPos.x, aPos.y, aPos.z, 1.0);\n" +
         "}";
 
-    glShaderSource(vertexShader, vertexSrc);
-    glCompileShader(vertexShader);
-
-    int status = glGetShaderi(vertexShader, GL_COMPILE_STATUS);
-    if (status == GLFW_FALSE) {
-      String compileError = glGetShaderInfoLog(vertexShader);
-      System.err.println(compileError);
-      throw new IllegalStateException("");
-    }
-
-
-    int fragShader;
-
-    fragShader = glCreateShader(GL_FRAGMENT_SHADER);
     String fragSrc = "#version 330 core\n"
         + "out vec4 FragColor;\n"
         + "\n"
@@ -306,33 +348,47 @@ public class Main {
         + "{\n"
         + "    FragColor = vec4(1.0f, 0.5f, 0.2f, 1.0f);\n"
         + "}";
-    glShaderSource(fragShader, fragSrc);
-    glCompileShader(fragShader);
+    int program = createShaderProgram(vertexSrc, fragSrc);
 
-    status = glGetShaderi(fragShader, GL_COMPILE_STATUS);
-    if (status == GLFW_FALSE) {
-      String compileError = glGetShaderInfoLog(fragShader);
-      System.err.println(compileError);
-      throw new IllegalStateException("");
-    }
 
-    int program;
-    program = glCreateProgram();
-    glAttachShader(program, vertexShader);
-    glAttachShader(program, fragShader);
-    glLinkProgram(program);
+    String vertexFontSrc = "#version 330 core\n" +
 
-    status = glGetProgrami(program, GL_LINK_STATUS);
-    if (status == GLFW_FALSE) {
-      String linkError = glGetProgramInfoLog(program);
-      System.err.println(linkError);
-      throw new IllegalStateException("");
-    }
+        "layout (location = 0) in vec2 aPos;\n" +
+        "layout (location = 1) in vec2 aTexCoord;\n" +
 
-    glDeleteShader(vertexShader);
-    glDeleteShader(fragShader);
+        "out vec2 TexCoord;\n" +
+
+        "uniform mat4 projection;\n" +
+
+        "void main()\n" +
+        "{\n" +
+        "   gl_Position = projection * vec4(aPos.x, aPos.y, 0.0, 1.0);\n" +
+        "   TexCoord = aTexCoord;\n" +
+        "}";
+
+    String fragFontSrc = "#version 330 core\n"
+        + "in vec2 TexCoord;\n"
+
+        + "out vec4 FragColor;\n"
+
+        + "uniform sampler2D texture1;\n"
+
+        + "void main()\n"
+        + "{\n"
+
+        + "    vec4 charTex = texture(texture1, TexCoord);\n"
+        + "    FragColor = vec4(1.0f, 0.5f, 0.0f, 1.0f) * charTex.w;\n" // get alpha from texture
+        + "}";
+
+    int fontProgram = createShaderProgram(vertexFontSrc, fragFontSrc);
 
     glUseProgram(program);
+    try (MemoryStack stack = MemoryStack.stackPush()) {
+      glUniformMatrix4fv(glGetUniformLocation(program, "projection"), false, ortho.get(stack.mallocFloat(16)));
+    }
+    glUseProgram(0);
+
+    glUseProgram(fontProgram);
     try (MemoryStack stack = MemoryStack.stackPush()) {
       glUniformMatrix4fv(glGetUniformLocation(program, "projection"), false, ortho.get(stack.mallocFloat(16)));
     }
@@ -356,9 +412,126 @@ public class Main {
       glBufferData(GL_ARRAY_BUFFER, triangleBufferData, GL_STATIC_DRAW);
     }
 
+    STBTTAlignedQuad shaderQuad = STBTTAlignedQuad.create();
+    try (MemoryStack stack = MemoryStack.stackPush()) {
+
+      FloatBuffer x = stack.floats(0f);
+      FloatBuffer y = stack.floats(0f);
+      x.put(200).flip();
+      y.put(50).flip();
+
+      stbtt_GetBakedQuad(charData, bitMapW, bitMapH,
+          'F' - 32, // reminder that the offset is 32
+          x, y, shaderQuad, true);
+    }
+
+    /*
+     glTexCoord2f(q.s0(), q.t0());
+        glVertex2f(q.x0(), q.y0());
+
+        glTexCoord2f(q.s1(), q.t0());
+        glVertex2f(q.x1(), q.y0());
+
+        glTexCoord2f(q.s1(), q.t1());
+        glVertex2f(q.x1(), q.y1());
+
+        glTexCoord2f(q.s0(), q.t1());
+        glVertex2f(q.x0(), q.y1());
+     */
+    /*
+    * x0, y0
+    * x1, y0
+    * x0, y1
+    *
+    * x1, y0
+    * x1, y1
+    * x0, y1
+    *
+    * */
+
+    /*
+     * s0, t0
+     * s1, t0
+     * s0, t1
+     *
+     * s1, t0
+     * s1, t1
+     * s0, t1
+     *
+     * */
+    float x0 = shaderQuad.x0();
+    float x1 = shaderQuad.x1();
+    float y0 = shaderQuad.y0();
+    float y1 = shaderQuad.y1();
+
+    float s0 = shaderQuad.s0();
+    float s1 = shaderQuad.s1();
+    float t0 = shaderQuad.t0();
+    float t1 = shaderQuad.t1();
+
+    int positionVBO = glGenBuffers();
+    int textureVBO = glGenBuffers();
+
+    float[] positions = new float[] {
+          x0, y0,
+          x1, y0,
+          x0, y1,
+
+          x1, y0,
+          x1, y1,
+          x0, y1,
+    };
+
+    try (MemoryStack stack = MemoryStack.stackPush()) {
+
+      FloatBuffer triangleBufferData = stack.mallocFloat(positions.length);
+
+      triangleBufferData.put(positions);
+      triangleBufferData.flip();
+
+      glBindBuffer(GL_ARRAY_BUFFER, positionVBO);
+      glBufferData(GL_ARRAY_BUFFER, triangleBufferData, GL_STATIC_DRAW);
+    }
+
+    float[] textureCoords = new float[] {
+        s0, t0,
+        s1, t0,
+        s0, t1,
+
+        s1, t0,
+        s1, t1,
+        s0, t1
+    };
+
+    try (MemoryStack stack = MemoryStack.stackPush()) {
+
+      FloatBuffer triangleBufferData = stack.mallocFloat(textureCoords.length);
+
+      triangleBufferData.put(textureCoords);
+      triangleBufferData.flip();
+
+      glBindBuffer(GL_ARRAY_BUFFER, textureVBO);
+      glBufferData(GL_ARRAY_BUFFER, triangleBufferData, GL_STATIC_DRAW);
+    }
+
+    int charVao = glGenVertexArrays();
+
+    glBindVertexArray(charVao);
+
+    glBindBuffer(GL_ARRAY_BUFFER, positionVBO);
+    glVertexAttribPointer(0, 2, GL_FLOAT, false, 2 * Float.BYTES, 0);
+    glEnableVertexAttribArray(0);
+
+    glBindBuffer(GL_ARRAY_BUFFER, textureVBO);
+    glVertexAttribPointer(1, 2, GL_FLOAT, false, 2 * Float.BYTES, 0);
+    glEnableVertexAttribArray(1);
+
+    glBindVertexArray(0);
+
     int vao;
     vao = glGenVertexArrays();
     glBindVertexArray(vao);
+    glBindBuffer(GL_ARRAY_BUFFER, triangleVBO);
 
     int positionAttribIndex = 0;
     glVertexAttribPointer(positionAttribIndex, 3, GL_FLOAT, false, 3 * Float.BYTES, 0);
@@ -379,11 +552,26 @@ public class Main {
 
       glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT); // clear the framebuffer
 
+      if (true) {
+        glUseProgram(fontProgram);
+        glBindVertexArray(charVao);
+        glDrawArrays(GL_TRIANGLES, 0, 6);
+        glBindVertexArray(0);
+        glUseProgram(0);
+
+//        glfwSwapBuffers(window);
+
+//        glfwPollEvents();
+//        continue;
+      }
+
       glUseProgram(program);
         glBindVertexArray(vao);
         glDrawArrays(GL_TRIANGLES, 0, 3);
         glBindVertexArray(0);
       glUseProgram(0);
+
+
 
       try (MemoryStack stack = MemoryStack.stackPush()) {
 
@@ -598,5 +786,50 @@ public class Main {
         glEnd();
       }
     }
+  }
+
+
+  private int createShaderProgram(String vertexSrc, String fragSrc) {
+
+    int vertexShader = glCreateShader(GL_VERTEX_SHADER);
+
+    glShaderSource(vertexShader, vertexSrc);
+    glCompileShader(vertexShader);
+
+    int status = glGetShaderi(vertexShader, GL_COMPILE_STATUS);
+    if (status == GLFW_FALSE) {
+      String compileError = glGetShaderInfoLog(vertexShader);
+      System.err.println(compileError);
+      throw new IllegalStateException("");
+    }
+
+    int fragShader = glCreateShader(GL_FRAGMENT_SHADER);
+    glShaderSource(fragShader, fragSrc);
+    glCompileShader(fragShader);
+
+    status = glGetShaderi(fragShader, GL_COMPILE_STATUS);
+    if (status == GLFW_FALSE) {
+      String compileError = glGetShaderInfoLog(fragShader);
+      System.err.println(compileError);
+      throw new IllegalStateException("");
+    }
+
+    int program;
+    program = glCreateProgram();
+    glAttachShader(program, vertexShader);
+    glAttachShader(program, fragShader);
+    glLinkProgram(program);
+
+    status = glGetProgrami(program, GL_LINK_STATUS);
+    if (status == GLFW_FALSE) {
+      String linkError = glGetProgramInfoLog(program);
+      System.err.println(linkError);
+      throw new IllegalStateException("");
+    }
+
+    glDeleteShader(vertexShader);
+    glDeleteShader(fragShader);
+
+    return program;
   }
 }
