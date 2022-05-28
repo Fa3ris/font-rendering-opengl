@@ -74,8 +74,11 @@ import static org.lwjgl.opengl.GL20.glGetProgramInfoLog;
 import static org.lwjgl.opengl.GL20.glGetProgrami;
 import static org.lwjgl.opengl.GL20.glGetShaderInfoLog;
 import static org.lwjgl.opengl.GL20.glGetShaderi;
+import static org.lwjgl.opengl.GL20.glGetUniformLocation;
 import static org.lwjgl.opengl.GL20.glLinkProgram;
 import static org.lwjgl.opengl.GL20.glShaderSource;
+import static org.lwjgl.opengl.GL20.glUniform1f;
+import static org.lwjgl.opengl.GL20.glUniformMatrix4fv;
 import static org.lwjgl.opengl.GL20.glUseProgram;
 import static org.lwjgl.opengl.GL20.glVertexAttribPointer;
 import static org.lwjgl.opengl.GL30.glBindVertexArray;
@@ -95,6 +98,7 @@ import java.nio.FloatBuffer;
 import java.nio.IntBuffer;
 import java.nio.channels.FileChannel;
 import java.nio.file.Paths;
+import org.joml.Matrix4f;
 import org.lwjgl.BufferUtils;
 import org.lwjgl.glfw.GLFWErrorCallback;
 import org.lwjgl.glfw.GLFWVidMode;
@@ -268,14 +272,17 @@ public class Main {
     start = 0;
     end = msg2.length();
 
+    //glOrtho(0, (int) windowW, (int) windowH, 0, -1, 1);
+    Matrix4f ortho = new Matrix4f().ortho(0, windowW, windowH, 0, -1, 1);
     int vertexShader;
 
     vertexShader = glCreateShader(GL_VERTEX_SHADER);
     String vertexSrc = "#version 330 core\n" +
         "layout (location = 0) in vec3 aPos;\n" +
+        "uniform mat4 projection;\n" +
         "void main()\n" +
         "{\n" +
-        "   gl_Position = vec4(aPos.x, aPos.y, aPos.z, 1.0);\n" +
+        "   gl_Position = projection * vec4(aPos.x, aPos.y, aPos.z, 1.0);\n" +
         "}";
 
     glShaderSource(vertexShader, vertexSrc);
@@ -325,15 +332,20 @@ public class Main {
     glDeleteShader(vertexShader);
     glDeleteShader(fragShader);
 
+    glUseProgram(program);
+    try (MemoryStack stack = MemoryStack.stackPush()) {
+      glUniformMatrix4fv(glGetUniformLocation(program, "projection"), false, ortho.get(stack.mallocFloat(16)));
+    }
+    glUseProgram(0);
 
     int triangleVBO = glGenBuffers();
     glBindBuffer(GL_ARRAY_BUFFER, triangleVBO);
 
     try (MemoryStack stack = MemoryStack.stackPush()) {
       float[] triangleVertices = {
-          -0.5f, -0.5f, 0.0f,
-          0.5f, -0.5f, 0.0f,
-          0.0f,  0.5f, 0.0f
+          windowW / 2, 200, 0.0f,
+          windowW / 2 - 100, 400, 0.0f,
+          windowW / 2 + 100, 400, 0.0f
       };
 
       FloatBuffer triangleBufferData = stack.mallocFloat(triangleVertices.length);
