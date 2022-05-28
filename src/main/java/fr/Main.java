@@ -27,6 +27,8 @@ import static org.lwjgl.opengl.GL11.GL_ALPHA;
 import static org.lwjgl.opengl.GL11.GL_BLEND;
 import static org.lwjgl.opengl.GL11.GL_COLOR_BUFFER_BIT;
 import static org.lwjgl.opengl.GL11.GL_DEPTH_BUFFER_BIT;
+import static org.lwjgl.opengl.GL11.GL_FALSE;
+import static org.lwjgl.opengl.GL11.GL_FLOAT;
 import static org.lwjgl.opengl.GL11.GL_LINEAR;
 import static org.lwjgl.opengl.GL11.GL_ONE_MINUS_SRC_ALPHA;
 import static org.lwjgl.opengl.GL11.GL_PROJECTION;
@@ -34,6 +36,7 @@ import static org.lwjgl.opengl.GL11.GL_QUADS;
 import static org.lwjgl.opengl.GL11.GL_SRC_ALPHA;
 import static org.lwjgl.opengl.GL11.GL_TEXTURE_2D;
 import static org.lwjgl.opengl.GL11.GL_TEXTURE_MIN_FILTER;
+import static org.lwjgl.opengl.GL11.GL_TRIANGLES;
 import static org.lwjgl.opengl.GL11.GL_UNSIGNED_BYTE;
 import static org.lwjgl.opengl.GL11.glBegin;
 import static org.lwjgl.opengl.GL11.glBindTexture;
@@ -41,6 +44,7 @@ import static org.lwjgl.opengl.GL11.glBlendFunc;
 import static org.lwjgl.opengl.GL11.glClear;
 import static org.lwjgl.opengl.GL11.glClearColor;
 import static org.lwjgl.opengl.GL11.glColor3f;
+import static org.lwjgl.opengl.GL11.glDrawArrays;
 import static org.lwjgl.opengl.GL11.glEnable;
 import static org.lwjgl.opengl.GL11.glEnd;
 import static org.lwjgl.opengl.GL11.glGenTextures;
@@ -51,6 +55,31 @@ import static org.lwjgl.opengl.GL11.glTexCoord2f;
 import static org.lwjgl.opengl.GL11.glTexImage2D;
 import static org.lwjgl.opengl.GL11.glTexParameteri;
 import static org.lwjgl.opengl.GL11.glVertex2f;
+import static org.lwjgl.opengl.GL15.GL_ARRAY_BUFFER;
+import static org.lwjgl.opengl.GL15.GL_STATIC_DRAW;
+import static org.lwjgl.opengl.GL15.glBindBuffer;
+import static org.lwjgl.opengl.GL15.glBufferData;
+import static org.lwjgl.opengl.GL15.glGenBuffers;
+import static org.lwjgl.opengl.GL20.GL_COMPILE_STATUS;
+import static org.lwjgl.opengl.GL20.GL_FRAGMENT_SHADER;
+import static org.lwjgl.opengl.GL20.GL_LINK_STATUS;
+import static org.lwjgl.opengl.GL20.GL_VERTEX_SHADER;
+import static org.lwjgl.opengl.GL20.glAttachShader;
+import static org.lwjgl.opengl.GL20.glCompileShader;
+import static org.lwjgl.opengl.GL20.glCreateProgram;
+import static org.lwjgl.opengl.GL20.glCreateShader;
+import static org.lwjgl.opengl.GL20.glDeleteShader;
+import static org.lwjgl.opengl.GL20.glEnableVertexAttribArray;
+import static org.lwjgl.opengl.GL20.glGetProgramInfoLog;
+import static org.lwjgl.opengl.GL20.glGetProgrami;
+import static org.lwjgl.opengl.GL20.glGetShaderInfoLog;
+import static org.lwjgl.opengl.GL20.glGetShaderi;
+import static org.lwjgl.opengl.GL20.glLinkProgram;
+import static org.lwjgl.opengl.GL20.glShaderSource;
+import static org.lwjgl.opengl.GL20.glUseProgram;
+import static org.lwjgl.opengl.GL20.glVertexAttribPointer;
+import static org.lwjgl.opengl.GL30.glBindVertexArray;
+import static org.lwjgl.opengl.GL30.glGenVertexArrays;
 import static org.lwjgl.stb.STBTruetype.stbtt_BakeFontBitmap;
 import static org.lwjgl.stb.STBTruetype.stbtt_GetBakedQuad;
 import static org.lwjgl.stb.STBTruetype.stbtt_GetFontVMetrics;
@@ -239,6 +268,90 @@ public class Main {
     start = 0;
     end = msg2.length();
 
+    int vertexShader;
+
+    vertexShader = glCreateShader(GL_VERTEX_SHADER);
+    String vertexSrc = "#version 330 core\n" +
+        "layout (location = 0) in vec3 aPos;\n" +
+        "void main()\n" +
+        "{\n" +
+        "   gl_Position = vec4(aPos.x, aPos.y, aPos.z, 1.0);\n" +
+        "}";
+
+    glShaderSource(vertexShader, vertexSrc);
+    glCompileShader(vertexShader);
+
+    int status = glGetShaderi(vertexShader, GL_COMPILE_STATUS);
+    if (status == GLFW_FALSE) {
+      String compileError = glGetShaderInfoLog(vertexShader);
+      System.err.println(compileError);
+      throw new IllegalStateException("");
+    }
+
+
+    int fragShader;
+
+    fragShader = glCreateShader(GL_FRAGMENT_SHADER);
+    String fragSrc = "#version 330 core\n"
+        + "out vec4 FragColor;\n"
+        + "\n"
+        + "void main()\n"
+        + "{\n"
+        + "    FragColor = vec4(1.0f, 0.5f, 0.2f, 1.0f);\n"
+        + "}";
+    glShaderSource(fragShader, fragSrc);
+    glCompileShader(fragShader);
+
+    status = glGetShaderi(fragShader, GL_COMPILE_STATUS);
+    if (status == GLFW_FALSE) {
+      String compileError = glGetShaderInfoLog(fragShader);
+      System.err.println(compileError);
+      throw new IllegalStateException("");
+    }
+
+    int program;
+    program = glCreateProgram();
+    glAttachShader(program, vertexShader);
+    glAttachShader(program, fragShader);
+    glLinkProgram(program);
+
+    status = glGetProgrami(program, GL_LINK_STATUS);
+    if (status == GLFW_FALSE) {
+      String linkError = glGetProgramInfoLog(program);
+      System.err.println(linkError);
+      throw new IllegalStateException("");
+    }
+
+    glDeleteShader(vertexShader);
+    glDeleteShader(fragShader);
+
+
+    int triangleVBO = glGenBuffers();
+    glBindBuffer(GL_ARRAY_BUFFER, triangleVBO);
+
+    try (MemoryStack stack = MemoryStack.stackPush()) {
+      float[] triangleVertices = {
+          -0.5f, -0.5f, 0.0f,
+          0.5f, -0.5f, 0.0f,
+          0.0f,  0.5f, 0.0f
+      };
+
+      FloatBuffer triangleBufferData = stack.mallocFloat(triangleVertices.length);
+
+      triangleBufferData.put(triangleVertices);
+      triangleBufferData.flip();
+
+      glBufferData(GL_ARRAY_BUFFER, triangleBufferData, GL_STATIC_DRAW);
+    }
+
+    int vao;
+    vao = glGenVertexArrays();
+    glBindVertexArray(vao);
+
+    int positionAttribIndex = 0;
+    glVertexAttribPointer(positionAttribIndex, 3, GL_FLOAT, false, 3 * Float.BYTES, 0);
+    glEnableVertexAttribArray(positionAttribIndex);
+
     // loop
     // Run the rendering loop until the user has attempted to close
     // the window or has pressed the ESCAPE key.
@@ -253,6 +366,12 @@ public class Main {
       System.out.printf("animation %s\n", accTime / animationTotal);
 
       glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT); // clear the framebuffer
+
+      glUseProgram(program);
+        glBindVertexArray(vao);
+        glDrawArrays(GL_TRIANGLES, 0, 3);
+        glBindVertexArray(0);
+      glUseProgram(0);
 
       try (MemoryStack stack = MemoryStack.stackPush()) {
 
