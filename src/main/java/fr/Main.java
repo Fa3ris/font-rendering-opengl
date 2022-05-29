@@ -566,6 +566,8 @@ public class Main {
     glVertexAttribPointer(positionAttribIndex, 3, GL_FLOAT, false, 3 * Float.BYTES, 0);
     glEnableVertexAttribArray(positionAttribIndex);
 
+    myStringPrefixLength = 0;
+
     // loop
     // Run the rendering loop until the user has attempted to close
     // the window or has pressed the ESCAPE key.
@@ -577,6 +579,17 @@ public class Main {
 
       accTime += dt;
 
+      myStringTimer += dt;
+
+      if (myStringTimer > 0.1) {
+//        myStringPrefixLength = Math.min(stringQuads.size(), ++myStringPrefixLength);
+        ++myStringPrefixLength;
+        myStringTimer = 0;
+        if (myStringPrefixLength > stringQuads.size()) {
+          myStringPrefixLength = 0;
+        }
+      }
+
       System.out.printf("animation %s\n", accTime / animationTotal);
 
       glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT); // clear the framebuffer
@@ -584,7 +597,7 @@ public class Main {
       if (true) {
         glUseProgram(fontProgram);
         glBindVertexArray(charVao);
-        glDrawArrays(GL_TRIANGLES, 0, stringQuads.size() * 6);
+        glDrawArrays(GL_TRIANGLES, 0, myStringPrefixLength * 6);
         glBindVertexArray(0);
         glUseProgram(0);
 
@@ -737,6 +750,9 @@ public class Main {
       lastTime = now;
     }
   }
+
+  int myStringPrefixLength;
+  double myStringTimer;
 
   double waitBeforeReset = 1;
 
