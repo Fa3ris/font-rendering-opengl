@@ -27,8 +27,6 @@ import static org.lwjgl.opengl.GL11.GL_ALPHA;
 import static org.lwjgl.opengl.GL11.GL_BLEND;
 import static org.lwjgl.opengl.GL11.GL_COLOR_BUFFER_BIT;
 import static org.lwjgl.opengl.GL11.GL_DEPTH_BUFFER_BIT;
-import static org.lwjgl.opengl.GL11.GL_DEPTH_TEST;
-import static org.lwjgl.opengl.GL11.GL_FALSE;
 import static org.lwjgl.opengl.GL11.GL_FLOAT;
 import static org.lwjgl.opengl.GL11.GL_LINEAR;
 import static org.lwjgl.opengl.GL11.GL_ONE_MINUS_SRC_ALPHA;
@@ -78,7 +76,6 @@ import static org.lwjgl.opengl.GL20.glGetShaderi;
 import static org.lwjgl.opengl.GL20.glGetUniformLocation;
 import static org.lwjgl.opengl.GL20.glLinkProgram;
 import static org.lwjgl.opengl.GL20.glShaderSource;
-import static org.lwjgl.opengl.GL20.glUniform1f;
 import static org.lwjgl.opengl.GL20.glUniformMatrix4fv;
 import static org.lwjgl.opengl.GL20.glUseProgram;
 import static org.lwjgl.opengl.GL20.glVertexAttribPointer;
@@ -88,7 +85,6 @@ import static org.lwjgl.stb.STBTruetype.stbtt_BakeFontBitmap;
 import static org.lwjgl.stb.STBTruetype.stbtt_GetBakedQuad;
 import static org.lwjgl.stb.STBTruetype.stbtt_GetFontVMetrics;
 import static org.lwjgl.stb.STBTruetype.stbtt_InitFont;
-import static org.lwjgl.system.MemoryStack.create;
 import static org.lwjgl.system.MemoryStack.stackPush;
 import static org.lwjgl.system.MemoryUtil.NULL;
 
@@ -101,7 +97,6 @@ import java.nio.IntBuffer;
 import java.nio.channels.FileChannel;
 import java.nio.file.Paths;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 import org.joml.Matrix4f;
 import org.lwjgl.BufferUtils;
@@ -150,7 +145,7 @@ public class Main {
     glfwWindowHint(GLFW_RESIZABLE, GLFW_TRUE); // the window will be resizable
 
     // Create the window
-    window = glfwCreateWindow((int) windowW, (int) windowH, "Hello World!", NULL, NULL);
+    window = glfwCreateWindow((int) windowW, (int) windowH, "Font Rendering", NULL, NULL);
 
     if (window == NULL) {
       throw new RuntimeException("Failed to create the GLFW window");
@@ -377,7 +372,6 @@ public class Main {
       y.put(125).flip();
       char[] chars = new char[myString.length()];
       myString.getChars(0, myString.length(), chars, 0);
-      System.out.println("chars " + Arrays.toString(chars));
 
       for (char aChar : chars) {
         STBTTAlignedQuad oneQuad = STBTTAlignedQuad.create();
@@ -389,14 +383,11 @@ public class Main {
         stringQuads.add(oneQuad);
       }
 
-      System.out.println(stringQuads);
     }
 
-    float[] myStringPositions; // 12 floats per quad
-    float[] myStringTexCoords; // 12 floats per quad
 
-    myStringPositions = new float[stringQuads.size() * 12];
-    myStringTexCoords = new float[stringQuads.size() * 12];
+    float[] myStringPositions = new float[stringQuads.size() * 12];
+    float[] myStringTexCoords = new float[stringQuads.size() * 12];
 
     for (int i = 0; i < stringQuads.size(); i++) {
       STBTTAlignedQuad oneQuad = stringQuads.get(i);
@@ -420,7 +411,7 @@ public class Main {
           x0, y1,
     };
 
-      System.arraycopy(positions, 0, myStringPositions, i * positions.length, positions.length);
+    System.arraycopy(positions, 0, myStringPositions, i * positions.length, positions.length);
 
     float[] textureCoords = new float[] {
         s0, t0,
@@ -436,43 +427,6 @@ public class Main {
 
     }
 
-    System.out.println(Arrays.toString(myStringPositions));
-    System.out.println(Arrays.toString(myStringTexCoords));
-
-    /*
-     glTexCoord2f(q.s0(), q.t0());
-        glVertex2f(q.x0(), q.y0());
-
-        glTexCoord2f(q.s1(), q.t0());
-        glVertex2f(q.x1(), q.y0());
-
-        glTexCoord2f(q.s1(), q.t1());
-        glVertex2f(q.x1(), q.y1());
-
-        glTexCoord2f(q.s0(), q.t1());
-        glVertex2f(q.x0(), q.y1());
-     */
-    /*
-    * x0, y0
-    * x1, y0
-    * x0, y1
-    *
-    * x1, y0
-    * x1, y1
-    * x0, y1
-    *
-    * */
-
-    /*
-     * s0, t0
-     * s1, t0
-     * s0, t1
-     *
-     * s1, t0
-     * s1, t1
-     * s0, t1
-     *
-     * */
     float x0 = shaderQuad.x0();
     float x1 = shaderQuad.x1();
     float y0 = shaderQuad.y0();
@@ -575,22 +529,18 @@ public class Main {
 
       double now = glfwGetTime();
       dt = now - lastTime;
-      System.out.printf("dt = %s\n",dt);
 
       accTime += dt;
 
       myStringTimer += dt;
 
       if (myStringTimer > 0.1) {
-//        myStringPrefixLength = Math.min(stringQuads.size(), ++myStringPrefixLength);
         ++myStringPrefixLength;
         myStringTimer = 0;
         if (myStringPrefixLength > stringQuads.size()) {
           myStringPrefixLength = 0;
         }
       }
-
-      System.out.printf("animation %s\n", accTime / animationTotal);
 
       glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT); // clear the framebuffer
 
@@ -600,11 +550,6 @@ public class Main {
         glDrawArrays(GL_TRIANGLES, 0, myStringPrefixLength * 6);
         glBindVertexArray(0);
         glUseProgram(0);
-
-//        glfwSwapBuffers(window);
-
-//        glfwPollEvents();
-//        continue;
       }
 
       glUseProgram(program);
@@ -612,8 +557,6 @@ public class Main {
         glDrawArrays(GL_TRIANGLES, 0, 3);
         glBindVertexArray(0);
       glUseProgram(0);
-
-
 
       try (MemoryStack stack = MemoryStack.stackPush()) {
 
@@ -727,15 +670,17 @@ public class Main {
       drawString(sub, 200, 500, charData, bitMapW, bitMapH, fontHeight, fontLineGap);
 
       int x = 100;
-      int y = 600;
+      float y = windowH;
       String[] debugMessages = {
-          "dt : " + dt,
+          String.format("dt: %.2f", dt),
           "prefix : " + prefix,
           String.format("t: %.2f", t),
           "animation total : " + animationTotal,
           "start : " + start,
-          "wait before reset : " + waitBeforeReset
+          String.format("wait before reset: %.2f", waitBeforeReset),
       };
+
+      y -= debugMessages.length * (fontHeight + fontLineGap);
       for (String message : debugMessages) {
         drawString(message , x, y, charData, bitMapW, bitMapH, fontHeight, fontLineGap);
         y += fontHeight + fontLineGap;
@@ -774,22 +719,8 @@ public class Main {
       // also gives the texture coordinates of the glyph to sample from the font bitmap
       STBTTAlignedQuad q = STBTTAlignedQuad.create();
 
-      String msg = "Hello my first string but how laborious it is fighter!!!";
-      if (true) { // all glyphs loaded
-        StringBuilder sb = new StringBuilder();
-        for (char c = 32; c < 127; ++c) { // 127 = DEL
-          sb.append(c);
-        }
-        sb.append("FIN");
-        msg = sb.toString();
-      }
-
-      msg = msg.repeat(5);
-
-      msg = s;
-
-      char[] chars = new char[msg.length()];
-      msg.getChars(0, msg.length(), chars, 0);
+      char[] chars = new char[s.length()];
+      s.getChars(0, s.length(), chars, 0);
 
       for (char aChar : chars) {
         stbtt_GetBakedQuad(charData, bitMapW, bitMapH,
