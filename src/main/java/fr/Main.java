@@ -100,6 +100,9 @@ import java.nio.FloatBuffer;
 import java.nio.IntBuffer;
 import java.nio.channels.FileChannel;
 import java.nio.file.Paths;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
 import org.joml.Matrix4f;
 import org.lwjgl.BufferUtils;
 import org.lwjgl.glfw.GLFWErrorCallback;
@@ -274,72 +277,15 @@ public class Main {
     start = 0;
     end = msg2.length();
 
-    //glOrtho(0, (int) windowW, (int) windowH, 0, -1, 1);
     Matrix4f ortho = new Matrix4f().ortho(0, windowW, windowH, 0, -1, 1);
-//    int vertexShader;
-//
-//    vertexShader = glCreateShader(GL_VERTEX_SHADER);
-//    String vertexSrc = "#version 330 core\n" +
-//        "layout (location = 0) in vec3 aPos;\n" +
-//        "uniform mat4 projection;\n" +
-//        "void main()\n" +
-//        "{\n" +
-//        "   gl_Position = projection * vec4(aPos.x, aPos.y, aPos.z, 1.0);\n" +
-//        "}";
-//
-//    glShaderSource(vertexShader, vertexSrc);
-//    glCompileShader(vertexShader);
-//
-//    int status = glGetShaderi(vertexShader, GL_COMPILE_STATUS);
-//    if (status == GLFW_FALSE) {
-//      String compileError = glGetShaderInfoLog(vertexShader);
-//      System.err.println(compileError);
-//      throw new IllegalStateException("");
-//    }
-//
-//
-//    int fragShader;
-//
-//    fragShader = glCreateShader(GL_FRAGMENT_SHADER);
-//    String fragSrc = "#version 330 core\n"
-//        + "out vec4 FragColor;\n"
-//        + "\n"
-//        + "void main()\n"
-//        + "{\n"
-//        + "    FragColor = vec4(1.0f, 0.5f, 0.2f, 1.0f);\n"
-//        + "}";
-//    glShaderSource(fragShader, fragSrc);
-//    glCompileShader(fragShader);
-//
-//    status = glGetShaderi(fragShader, GL_COMPILE_STATUS);
-//    if (status == GLFW_FALSE) {
-//      String compileError = glGetShaderInfoLog(fragShader);
-//      System.err.println(compileError);
-//      throw new IllegalStateException("");
-//    }
-//
-//    int program;
-//    program = glCreateProgram();
-//    glAttachShader(program, vertexShader);
-//    glAttachShader(program, fragShader);
-//    glLinkProgram(program);
-    //    status = glGetProgrami(program, GL_LINK_STATUS);
-//    if (status == GLFW_FALSE) {
-//      String linkError = glGetProgramInfoLog(program);
-//      System.err.println(linkError);
-//      throw new IllegalStateException("");
-//    }
-//
-//    glDeleteShader(vertexShader);
-//    glDeleteShader(fragShader);
 
-        String vertexSrc = "#version 330 core\n" +
-        "layout (location = 0) in vec3 aPos;\n" +
-        "uniform mat4 projection;\n" +
-        "void main()\n" +
-        "{\n" +
-        "   gl_Position = projection * vec4(aPos.x, aPos.y, aPos.z, 1.0);\n" +
-        "}";
+    String vertexSrc = "#version 330 core\n" +
+    "layout (location = 0) in vec3 aPos;\n" +
+    "uniform mat4 projection;\n" +
+    "void main()\n" +
+    "{\n" +
+    "   gl_Position = projection * vec4(aPos.x, aPos.y, aPos.z, 1.0);\n" +
+    "}";
 
     String fragSrc = "#version 330 core\n"
         + "out vec4 FragColor;\n"
@@ -350,6 +296,11 @@ public class Main {
         + "}";
     int program = createShaderProgram(vertexSrc, fragSrc);
 
+    glUseProgram(program);
+    try (MemoryStack stack = MemoryStack.stackPush()) {
+      glUniformMatrix4fv(glGetUniformLocation(program, "projection"), false, ortho.get(stack.mallocFloat(16)));
+    }
+    glUseProgram(0);
 
     String vertexFontSrc = "#version 330 core\n" +
 
@@ -382,12 +333,6 @@ public class Main {
 
     int fontProgram = createShaderProgram(vertexFontSrc, fragFontSrc);
 
-    glUseProgram(program);
-    try (MemoryStack stack = MemoryStack.stackPush()) {
-      glUniformMatrix4fv(glGetUniformLocation(program, "projection"), false, ortho.get(stack.mallocFloat(16)));
-    }
-    glUseProgram(0);
-
     glUseProgram(fontProgram);
     try (MemoryStack stack = MemoryStack.stackPush()) {
       glUniformMatrix4fv(glGetUniformLocation(program, "projection"), false, ortho.get(stack.mallocFloat(16)));
@@ -413,6 +358,10 @@ public class Main {
     }
 
     STBTTAlignedQuad shaderQuad = STBTTAlignedQuad.create();
+
+    List<STBTTAlignedQuad> stringQuads = new ArrayList<>();
+
+    String myString = "For The glory of the 7!";
     try (MemoryStack stack = MemoryStack.stackPush()) {
 
       FloatBuffer x = stack.floats(0f);
@@ -423,7 +372,72 @@ public class Main {
       stbtt_GetBakedQuad(charData, bitMapW, bitMapH,
           'F' - 32, // reminder that the offset is 32
           x, y, shaderQuad, true);
+
+      x.put(350).flip();
+      y.put(125).flip();
+      char[] chars = new char[myString.length()];
+      myString.getChars(0, myString.length(), chars, 0);
+      System.out.println("chars " + Arrays.toString(chars));
+
+      for (char aChar : chars) {
+        STBTTAlignedQuad oneQuad = STBTTAlignedQuad.create();
+
+        stbtt_GetBakedQuad(charData, bitMapW, bitMapH,
+            aChar - 32, // reminder that the offset is 32
+            x, y, oneQuad, true);
+
+        stringQuads.add(oneQuad);
+      }
+
+      System.out.println(stringQuads);
     }
+
+    float[] myStringPositions; // 12 floats per quad
+    float[] myStringTexCoords; // 12 floats per quad
+
+    myStringPositions = new float[stringQuads.size() * 12];
+    myStringTexCoords = new float[stringQuads.size() * 12];
+
+    for (int i = 0; i < stringQuads.size(); i++) {
+      STBTTAlignedQuad oneQuad = stringQuads.get(i);
+      float x0 = oneQuad.x0();
+      float x1 = oneQuad.x1();
+      float y0 = oneQuad.y0();
+      float y1 = oneQuad.y1();
+
+      float s0 = oneQuad.s0();
+      float s1 = oneQuad.s1();
+      float t0 = oneQuad.t0();
+      float t1 = oneQuad.t1();
+
+      float[] positions = new float[] {
+          x0, y0,
+          x1, y0,
+          x0, y1,
+
+          x1, y0,
+          x1, y1,
+          x0, y1,
+    };
+
+      System.arraycopy(positions, 0, myStringPositions, i * positions.length, positions.length);
+
+    float[] textureCoords = new float[] {
+        s0, t0,
+        s1, t0,
+        s0, t1,
+
+        s1, t0,
+        s1, t1,
+        s0, t1
+    };
+
+      System.arraycopy(textureCoords, 0, myStringTexCoords, i * textureCoords.length, textureCoords.length);
+
+    }
+
+    System.out.println(Arrays.toString(myStringPositions));
+    System.out.println(Arrays.toString(myStringTexCoords));
 
     /*
      glTexCoord2f(q.s0(), q.t0());
@@ -491,6 +505,14 @@ public class Main {
 
       glBindBuffer(GL_ARRAY_BUFFER, positionVBO);
       glBufferData(GL_ARRAY_BUFFER, triangleBufferData, GL_STATIC_DRAW);
+
+      FloatBuffer stringPosBufferData = stack.mallocFloat(myStringPositions.length);
+
+      stringPosBufferData.put(myStringPositions);
+      stringPosBufferData.flip();
+
+      glBufferData(GL_ARRAY_BUFFER, stringPosBufferData, GL_STATIC_DRAW);
+
     }
 
     float[] textureCoords = new float[] {
@@ -512,6 +534,13 @@ public class Main {
 
       glBindBuffer(GL_ARRAY_BUFFER, textureVBO);
       glBufferData(GL_ARRAY_BUFFER, triangleBufferData, GL_STATIC_DRAW);
+
+      FloatBuffer stringTexBufferData = stack.mallocFloat(myStringTexCoords.length);
+
+      stringTexBufferData.put(myStringTexCoords);
+      stringTexBufferData.flip();
+
+      glBufferData(GL_ARRAY_BUFFER, stringTexBufferData, GL_STATIC_DRAW);
     }
 
     int charVao = glGenVertexArrays();
@@ -555,7 +584,7 @@ public class Main {
       if (true) {
         glUseProgram(fontProgram);
         glBindVertexArray(charVao);
-        glDrawArrays(GL_TRIANGLES, 0, 6);
+        glDrawArrays(GL_TRIANGLES, 0, stringQuads.size() * 6);
         glBindVertexArray(0);
         glUseProgram(0);
 
